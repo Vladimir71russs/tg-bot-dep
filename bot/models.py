@@ -5,30 +5,37 @@ from bot.state import user_states
 from bot.utils import get_main_menu_button, get_main_menu
 from dict.models import Word, User
 
+import re
+from asgiref.sync import sync_to_async
+
 async def add_word_to_db(telegram_id, text, update):
-    # Проверяем наличие разделителя "-"
+    # Проверяем наличие хотя бы одного разделителя "-"
     if "-" not in text:
         await update.message.reply_text(
-            "Проверьте правильность ввода. Используйте формат 'английское - русский - транскрипция'.",
-        reply_markup=get_main_menu()
+            "Проверьте правильность ввода. Используйте формат 'английское - русский' или 'английское - русский - транскрипция'.",
+            reply_markup=get_main_menu()
         )
         return  # Остаёмся в режиме добавления
 
-    # Разделяем текст на три части
-    try:
-        english_word, russian_word, transcription = map(str.strip, text.split("-", 2))
-    except ValueError:
+    # Разделяем текст на части
+    parts = list(map(str.strip, text.split("-", 2)))
+    if len(parts) < 2:
         await update.message.reply_text(
-            "Проверьте правильность ввода. Убедитесь, что текст содержит два '-' между словами.",
-        reply_markup=get_main_menu()
+            "Проверьте правильность ввода. Формат должен быть 'английское - русский' или 'английское - русский - транскрипция'.",
+            reply_markup=get_main_menu()
         )
         return  # Остаёмся в режиме добавления
+
+    # Извлекаем слова из частей
+    english_word = parts[0]
+    russian_word = parts[1]
+    transcription = parts[2] if len(parts) > 2 else ""  # Если транскрипция не указана, используем пустую строку
 
     # Проверяем первое слово (должно быть на английском)
     if not re.fullmatch(r"[A-Za-z\s]+", english_word):
         await update.message.reply_text(
             "Проверьте правильность ввода. Первое слово должно быть на английском.",
-        reply_markup=get_main_menu()
+            reply_markup=get_main_menu()
         )
         return  # Остаёмся в режиме добавления
 
@@ -36,29 +43,30 @@ async def add_word_to_db(telegram_id, text, update):
     if not re.fullmatch(r"[А-Яа-яЁё\s]+", russian_word):
         await update.message.reply_text(
             "Проверьте правильность ввода. Второе слово должно быть на русском.",
-        reply_markup=get_main_menu()
+            reply_markup=get_main_menu()
         )
         return  # Остаёмся в режиме добавления
 
-    # Проверяем транскрипцию (может быть на русском или английском)
-    if not re.fullmatch(r"[A-Za-zА-Яа-яЁё\s'ˈˌ]+", transcription):
+    # Проверяем транскрипцию, если она указана
+    if transcription and not re.fullmatch(r"[A-Za-zА-Яа-яЁё\s'ˈˌ]+", transcription):
         await update.message.reply_text(
             "Проверьте правильность ввода. Транскрипция должна быть на русском или английском, "
             "содержащей только буквы, пробелы и символы ударения (ˈ, ˌ).",
-        reply_markup=get_main_menu()
+            reply_markup=get_main_menu()
         )
         return  # Остаёмся в режиме добавления
 
-    # Если все три части корректны, добавляем в базу данных
+    # Если все части корректны, добавляем в базу данных
     user = await sync_to_async(User.objects.get)(telegram_id=telegram_id)
     await sync_to_async(Word.objects.create)(
         user=user, english_word=english_word, russian_word=russian_word, transcription=transcription
     )
     await update.message.reply_text(
-        f"Слово '{english_word} - {russian_word} - {transcription}' добавлено в словарь!",
+        f"Слово '{english_word} - {russian_word}{f' - {transcription}' if transcription else ''}' добавлено в словарь!",
         reply_markup=get_main_menu()
     )
     user_states.pop(telegram_id, None)  # Сбрасываем состояние, так как добавление завершено
+
 
 
 async def delete_word_from_db(telegram_id, text, update):

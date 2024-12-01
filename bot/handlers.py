@@ -59,7 +59,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "add_word":
         user_states[query.message.chat_id] = {"state": "adding"}
-        await query.message.reply_text("Введите слово в формате 'английское - русский-транскрипция':", reply_markup=get_main_menu_button())
+        await query.message.reply_text("Введите слово в формате 'английское - русский - транскрипция':", reply_markup=get_main_menu_button())
 
     elif query.data == "my_words":
         words = await get_user_words(query.message.chat_id)
@@ -111,7 +111,7 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Если пользователь вводит текст в неизвестном формате
     await update.message.reply_text(
         "Некорректный формат. Выберите действие из меню.",
-        reply_markup=get_main_menu_button()
+        reply_markup=get_main_menu()
     )
 
 
