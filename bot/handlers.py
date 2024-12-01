@@ -59,7 +59,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "add_word":
         user_states[query.message.chat_id] = {"state": "adding"}
-        await query.message.reply_text("Введите слово в формате 'английское - русский':", reply_markup=get_main_menu_button())
+        await query.message.reply_text("Введите слово в формате 'английское - русский-транскрипция':", reply_markup=get_main_menu_button())
 
     elif query.data == "my_words":
         words = await get_user_words(query.message.chat_id)

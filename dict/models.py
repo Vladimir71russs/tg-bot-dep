@@ -13,6 +13,7 @@ class Word(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='words')
     english_word = models.CharField(max_length=255)
     russian_word = models.CharField(max_length=255)
+    transcription = models.CharField(max_length=255, blank=True, null=True)  # Добавляем поле для транскрипции
 
     def __str__(self):
-        return f"{self.english_word} -> {self.russian_word}"
+        return f"{self.english_word} -> {self.russian_word} [{self.transcription}]"
