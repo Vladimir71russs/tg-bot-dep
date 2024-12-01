@@ -64,7 +64,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "my_words":
         words = await get_user_words(query.message.chat_id)
         if words:
-            word_list = "\n".join([f"{w.english_word} - {w.russian_word}" for w in words])
+            word_list = "\n".join([
+                f"{w.english_word} - {w.russian_word}" + (f" - {w.transcription}" if w.transcription else "")
+                for w in words
+            ])
             total_words = len(words)
             await query.message.reply_text(
                 f"Ваш словарь:\n{word_list}\n\n📊 Всего слов в словаре: {total_words}",
@@ -189,7 +192,7 @@ async def finish_learning(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Отправляем результаты
     await update.callback_query.message.reply_text(
         result_message,
-        reply_markup=get_main_menu_button()
+        reply_markup=get_main_menu()
     )
 
 
