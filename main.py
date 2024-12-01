@@ -13,8 +13,8 @@ from telegram.ext import (
 # Настройка Django для работы вне проекта
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "telegtam.settings")
 django.setup()
-from bot.handlers import start_handler, text_handler, button_handler, finish_learning
-from dict.models import User, Word
+from bot.handlers import start_handler, button_handler, text_handler
+# from dict.models import User, Word
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)

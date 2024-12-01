@@ -8,8 +8,8 @@ from telegram.ext import CallbackQueryHandler
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from dict.models import Word
-from utils import get_main_menu, get_main_menu_button, get_user
-from models import add_word_to_db, delete_word_from_db, get_user_words
+from bot.utils import get_main_menu, get_main_menu_button, get_user
+from bot.models import add_word_to_db, delete_word_from_db, get_user_words
 
 # Состояния пользователей для отслеживания режима обучения
 user_states = {}

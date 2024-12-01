@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'dict',
+    'telegtam'
 ]
 
 MIDDLEWARE = [
@@ -88,7 +89,7 @@ DATABASES = {
        'NAME': 'postgres_db_tg',
        'USER': 'admin',
        'PASSWORD': os.getenv('DATABASE_PASSWORD'),
-       'HOST': 'localhost',  # Обычно 'localhost' если без докера, а с докером db
+       'HOST': 'db',  # Обычно 'localhost' если без докера, а с докером db
        'PORT': '5432',  # Порт по умолчанию для PostgreSQL
  }
 }
@@ -114,7 +115,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru'
 
 TIME_ZONE = 'UTC'
 
