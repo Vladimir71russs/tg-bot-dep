@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-import dj_database_url
+
 load_dotenv()
 
 
@@ -28,15 +28,9 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 YOUR_TELEGRAM_BOT_TOKEN = os.getenv('YOUR_TELEGRAM_BOT_TOKEN')
 
 # SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = True
 
-# DEBUG = True
-#
-# ALLOWED_HOSTS = []
-
-
-DEBUG = False
-
-ALLOWED_HOSTS = ['tg-bot-dep.onrender.com']
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -87,22 +81,18 @@ WSGI_APPLICATION = 'telegtam.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# ДЛя деплоя
-DATABASES = {
-    'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
-}
 
 # ДЛя запуска на компе
-# DATABASES = {
-#    'default': {
-#        'ENGINE': 'django.db.backends.postgresql',
-#        'NAME': 'postgres_db_tg',
-#        'USER': 'admin',
-#        'PASSWORD': os.getenv('DATABASE_PASSWORD'),
-#        'HOST': 'db',  # Обычно 'localhost' если без докера, а с докером db
-#        'PORT': '5432',  # Порт по умолчанию для PostgreSQL
-#  }
-# }
+DATABASES = {
+   'default': {
+       'ENGINE': 'django.db.backends.postgresql',
+       'NAME': 'postgres_db_tg',
+       'USER': 'admin',
+       'PASSWORD': os.getenv('DATABASE_PASSWORD'),
+       'HOST': 'db',  # Обычно 'localhost' если без докера, а с докером db
+       'PORT': '5432',  # Порт по умолчанию для PostgreSQL
+ }
+}
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
