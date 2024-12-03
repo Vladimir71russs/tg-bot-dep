@@ -29,6 +29,7 @@ def main():
     if not token:
         raise ValueError("Токен Telegram бота не найден в настройках!")
 
+    # Создаем приложение Telegram
     application = Application.builder().token(token).build()
 
     # Регистрация обработчиков
@@ -36,8 +37,17 @@ def main():
     application.add_handler(CallbackQueryHandler(button_handler))  # Для кнопок
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))  # Для текста
 
-    logger.info("Бот запущен...")
-    application.run_polling()
+    logger.info("Бот запущен через Webhook...")
+
+    # Установите URL Webhook
+    webhook_url = f"https://server-bot-tg.onrender.com/webhook/"
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000)),  # Порт, на котором приложение слушает запросы
+        url_path="webhook/",
+        webhook_url=webhook_url,  # Telegram будет отправлять запросы сюда
+    )
+
 
 if __name__ == "__main__":
     main()
