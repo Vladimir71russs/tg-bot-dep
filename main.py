@@ -48,6 +48,6 @@ def main():
         webhook_url=webhook_url,  # Telegram будет отправлять запросы сюда
     )
 
-
+#fdf
 if __name__ == "__main__":
     main()
