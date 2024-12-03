@@ -87,10 +87,22 @@ WSGI_APPLICATION = 'telegtam.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# ДЛя деплоя
 DATABASES = {
-    'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DATABASE_URL').split('/')[-1],
+        'USER': os.getenv('DATABASE_URL').split(':')[1][2:],
+        'PASSWORD': os.getenv('DATABASE_URL').split(':')[2].split('@')[0],
+        'HOST': os.getenv('DATABASE_URL').split('@')[1].split(':')[0],
+        'PORT': os.getenv('DATABASE_URL').split(':')[-1].split('/')[0],
+    }
 }
+
+
+# ДЛя деплоя
+# DATABASES = {
+#     'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
+# }
 
 # ДЛя запуска на компе
 # DATABASES = {
