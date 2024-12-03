@@ -9,7 +9,7 @@ services:
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
+      - "5000:5000"  # Порт для Webhook
     environment:
       DATABASE_URL: ${DATABASE_URL}  # Передаём переменную окружения с настройками базы
     depends_on: []
