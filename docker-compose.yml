@@ -1,28 +1,15 @@
 services:
   telegram_bot:
     build: .
-    command: sh -c "python manage.py makemigrations && python manage.py migrate && python main.py"
+    command: >
+      sh -c "
+      python manage.py makemigrations &&
+      python manage.py migrate &&
+      python main.py"
     volumes:
       - .:/app
     ports:
       - "8000:8000"
-    depends_on:
-      - db
-
-
-  db:
-    image: postgres:14
-    restart: always
     environment:
-      POSTGRES_DB: postgres_db_tg
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}  # Используем переменные окружения
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
-
-
-volumes:
-  postgres_data:
+      DATABASE_URL: ${DATABASE_URL}  # Передаём переменную окружения с настройками базы
+    depends_on: []
