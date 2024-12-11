@@ -1,13 +1,9 @@
 import random
 from telegram import Update
 from telegram.ext import ContextTypes
-from asgiref.sync import sync_to_async
+
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackQueryHandler
-
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from dict.models import Word
 from bot.utils import get_main_menu, get_main_menu_button, get_user
 from bot.models import add_word_to_db, delete_word_from_db, get_user_words
 
@@ -149,11 +145,15 @@ async def start_learning(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Главное меню", callback_data="main_menu")]
     ]
 
+    # Отправляем сообщение с транскрипцией (если есть)
+    message = f"Как переводится слово '{current_word.english_word}'"
+    if current_word.transcription:
+        message += f" [{current_word.transcription}]"
+
     await update.callback_query.message.reply_text(
-        f"Как переводится слово '{current_word.english_word}'?",
+        message,
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
-
 
 
 async def finish_learning(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -196,8 +196,6 @@ async def finish_learning(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-
-
 async def continue_learning(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.message.chat_id
     user_state = user_states.get(telegram_id)
@@ -232,32 +230,11 @@ async def continue_learning(update: Update, context: ContextTypes.DEFAULT_TYPE):
         next_word = user_state["words"].pop(0)
         user_state["current_word"] = next_word
 
-        # Кнопка завершения обучения
-        keyboard = [
-            [InlineKeyboardButton("Закончить обучение", callback_data="finish_learning")],
-            [InlineKeyboardButton("Главное меню", callback_data="main_menu")]
-        ]
+        message = f"Как переводится слово '{next_word.english_word}'"
+        if next_word.transcription:
+            message += f" [{next_word.transcription}]"
 
-        await update.message.reply_text(
-            f"Как переводится слово '{next_word.english_word}'?",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+        await update.message.reply_text(message)
     else:
-        # Завершаем обучение и выводим итоговую статистику
-        incorrect_pairs = user_state["incorrect_pairs"]
-        incorrect_pairs_text = "\n".join(
-            [f"'{pair[0]}' → {pair[1]}" for pair in incorrect_pairs]) if incorrect_pairs else "Ошибок нет!"
-
-        del user_states[telegram_id]
-        await update.message.reply_text(
-            f"Обучение завершено! 🎓\n\nИтоговая статистика:\n"
-            f"✅ Правильных ответов: {correct}\n❌ Неправильных ответов: {incorrect}\n\n"
-            f"Ошибки (правильные переводы):\n{incorrect_pairs_text}",
-            reply_markup=get_main_menu()
-        )
-
-
-
-
-
-
+        # Если все слова выучены
+        await finish_learning(update, context)

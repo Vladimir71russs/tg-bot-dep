@@ -1,8 +1,5 @@
-import re
-from asgiref.sync import sync_to_async
-
 from bot.state import user_states
-from bot.utils import get_main_menu_button, get_main_menu
+from bot.utils import get_main_menu
 from dict.models import Word, User
 
 import re
@@ -27,22 +24,22 @@ async def add_word_to_db(telegram_id, text, update):
         return  # Остаёмся в режиме добавления
 
     # Извлекаем слова из частей
-    english_word = parts[0]
-    russian_word = parts[1]
+    english_phrase = parts[0]
+    russian_phrase = parts[1]
     transcription = parts[2] if len(parts) > 2 else ""  # Если транскрипция не указана, используем пустую строку
 
-    # Проверяем первое слово (должно быть на английском)
-    if not re.fullmatch(r"[A-Za-z\s]+", english_word):
+    # Проверяем, что первая часть состоит из английских слов
+    if not re.fullmatch(r"[A-Za-z\s]+", english_phrase):
         await update.message.reply_text(
-            "Проверьте правильность ввода. Первое слово должно быть на английском.",
+            "Проверьте правильность ввода. Первая часть должна содержать только английские слова или словосочетания.",
             reply_markup=get_main_menu()
         )
         return  # Остаёмся в режиме добавления
 
-    # Проверяем второе слово (должно быть на русском)
-    if not re.fullmatch(r"[А-Яа-яЁё\s]+", russian_word):
+    # Проверяем, что вторая часть состоит из русских слов
+    if not re.fullmatch(r"[А-Яа-яЁё\s]+", russian_phrase):
         await update.message.reply_text(
-            "Проверьте правильность ввода. Второе слово должно быть на русском.",
+            "Проверьте правильность ввода. Вторая часть должна содержать только русские слова или словосочетания.",
             reply_markup=get_main_menu()
         )
         return  # Остаёмся в режиме добавления
@@ -59,14 +56,13 @@ async def add_word_to_db(telegram_id, text, update):
     # Если все части корректны, добавляем в базу данных
     user = await sync_to_async(User.objects.get)(telegram_id=telegram_id)
     await sync_to_async(Word.objects.create)(
-        user=user, english_word=english_word, russian_word=russian_word, transcription=transcription
+        user=user, english_word=english_phrase, russian_word=russian_phrase, transcription=transcription
     )
     await update.message.reply_text(
-        f"Слово '{english_word} - {russian_word}{f' - {transcription}' if transcription else ''}' добавлено в словарь!",
+        f"Слово или словосочетание '{english_phrase} - {russian_phrase}{f' - {transcription}' if transcription else ''}' добавлено в словарь!",
         reply_markup=get_main_menu()
     )
     user_states.pop(telegram_id, None)  # Сбрасываем состояние, так как добавление завершено
-
 
 
 async def delete_word_from_db(telegram_id, text, update):
