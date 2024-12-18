@@ -2,6 +2,7 @@ from asgiref.sync import sync_to_async
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from dict.models import User
 
+
 def get_main_menu_button():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("Главное меню", callback_data="main_menu")]
