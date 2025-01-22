@@ -10,6 +10,17 @@ services:
       - .:/app
     ports:
       - "5000:5000"  # Порт для Webhook
+    depends_on:
+      - db  # Указываем зависимость от базы данных
+
+  db:
+    image: postgres:14-alpine
     environment:
-      DATABASE_URL: ${DATABASE_URL}  # Передаём переменную окружения с настройками базы
-    depends_on: []
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: os.getenv('DATABASE_PASSWORD')
+      POSTGRES_DB: postgres_db_tg
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

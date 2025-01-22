@@ -12,7 +12,6 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.message.chat_id
     username = update.message.chat.username or f"User_{telegram_id}"
 
-
     user, created = await get_user(telegram_id, username)
     if created:
         # Приветственное сообщение для нового пользователя
@@ -42,6 +41,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     query = update.callback_query
     await query.answer()
 
@@ -54,7 +54,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "add_word":
         user_states[query.message.chat_id] = {"state": "adding"}
-        await query.message.reply_text("Введите слово в формате 'английское - русский - транскрипция':", reply_markup=get_main_menu_button())
+        await query.message.reply_text("Введите слово в формате 'индекс категории - английское - русский - транскрипция':", reply_markup=get_main_menu_button())
 
     elif query.data == "my_words":
         words = await get_user_words(query.message.chat_id)
@@ -75,8 +75,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_states[query.message.chat_id] = {"state": "deleting"}
         await query.message.reply_text("Введите слово для удаления (на английском или русском):")
 
-    elif query.data == "finish_learning":  # Новый кейс
+
+    elif query.data == "finish_learning":
+
+        if not user_states.get(query.message.chat_id):
+            await query.message.reply_text(
+                "Сессия обучения не найдена, попробуйте начать сначала.",
+                reply_markup=get_main_menu_button()
+            )
+            return
         await finish_learning(update, context)
+
 
     else:
         await query.message.reply_text("Неизвестная команда.")
