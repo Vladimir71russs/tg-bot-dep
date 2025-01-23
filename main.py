@@ -13,8 +13,7 @@ from telegram.ext import (
 # Настройка Django для работы вне проекта
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "telegtam.settings")
 django.setup()
-from bot.handlers import start_handler, button_handler, text_handler
-# from dict.models import User, Word
+from bot.handlers import start_handler, button_handler, text_handler, learn_handler, category_handler
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -30,9 +29,12 @@ def main():
    application = Application.builder().token(token).build()
 
    # Регистрация обработчиков
+   application.add_handler(CallbackQueryHandler(category_handler, pattern="^category:"))  # Для обработки кнопок категорий
    application.add_handler(CommandHandler("start", start_handler))
    application.add_handler(CallbackQueryHandler(button_handler))  # Для кнопок
    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))  # Для текста
+   application.add_handler(CommandHandler("learn", learn_handler))  # Для команды /learn
+
 
    logger.info("Бот запущен...")
    application.run_polling()

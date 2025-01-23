@@ -5,7 +5,11 @@ from bot.learning import start_learning, continue_learning, finish_learning
 from bot.utils import get_main_menu, get_main_menu_button, get_user
 from bot.models import add_word_to_db, delete_word_from_db, get_user_words
 from bot.state import user_states
-# Состояния пользователей для отслеживания режима обучения
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from asgiref.sync import sync_to_async
+from dict.models import Word
+from random import shuffle
 
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -50,17 +54,26 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("Главное меню:", reply_markup=get_main_menu())
 
     elif query.data == "learn_words":
-        await start_learning(update, context)
+        await learn_handler(update, context)
 
     elif query.data == "add_word":
         user_states[query.message.chat_id] = {"state": "adding"}
-        await query.message.reply_text("Введите слово в формате 'индекс категории - английское - русский - транскрипция':", reply_markup=get_main_menu_button())
+        categories_info = (
+            "Выберите категорию, указав соответствующую цифру:\n"
+            "1: существительные\n"
+            "2: глаголы\n"
+            "3: прилагательные\n"
+            "4: частицы\n"
+            "5: словосочетания\n"
+            "6: новые слова\n"
+        )
+        await query.message.reply_text(f"{categories_info} Введите слово в формате 'индекс категории - английское - русский - транскрипция':", reply_markup=get_main_menu_button())
 
     elif query.data == "my_words":
         words = await get_user_words(query.message.chat_id)
         if words:
             word_list = "\n".join([
-                f"{w.english_word} - {w.russian_word}" + (f" - {w.transcription}" if w.transcription else "")
+                f"{w.category} - {w.english_word} - {w.russian_word}" + (f" - {w.transcription}" if w.transcription else "")
                 for w in words
             ])
             total_words = len(words)
@@ -117,3 +130,85 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Некорректный формат. Выберите действие из меню.",
         reply_markup=get_main_menu()
     )
+
+
+# Генерация меню с категориями
+def get_category_menu():
+    keyboard = [
+        [InlineKeyboardButton("Существительные", callback_data="category:существительные")],
+        [InlineKeyboardButton("Глаголы", callback_data="category:глаголы")],
+        [InlineKeyboardButton("Прилагательные", callback_data="category:прилагательные")],
+        [InlineKeyboardButton("Частицы", callback_data="category:частицы")],
+        [InlineKeyboardButton("Словосочетания", callback_data="category:словосочетания")],
+        [InlineKeyboardButton("Новые слова", callback_data="category:новые")],
+        [InlineKeyboardButton("Все слова", callback_data="category:все")],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
+# Обработчик команды "учиться"
+async def learn_handler(update, context):
+    if update.callback_query:
+        await update.callback_query.message.reply_text(
+            "Выберите категорию для обучения:",
+            reply_markup=get_category_menu()
+        )
+    elif update.message:
+        await update.message.reply_text(
+            "Выберите категорию для обучения:",
+            reply_markup=get_category_menu()
+        )
+
+
+# Обработчик нажатия кнопок категорий
+async def category_handler(update, context):
+    query = update.callback_query
+    await query.answer()
+
+    # Получаем выбранную категорию
+    callback_data = query.data
+    if callback_data.startswith("category:"):
+        category = callback_data.split(":", 1)[1]
+
+        # Фильтруем слова по категории
+        telegram_id = query.from_user.id
+
+        # Используем sync_to_async для выполнения запроса
+        user_words = await sync_to_async(list)(
+            Word.objects.filter(user__telegram_id=telegram_id)
+        )
+
+        if category != "все":
+            # Фильтрация по категории
+            user_words = [word for word in user_words if word.category == category]
+
+        if not user_words:
+            await query.edit_message_text(f"В категории '{category}' пока нет слов.")
+            return
+
+        # Перемешиваем слова и сохраняем их в состояние
+        shuffle(user_words)
+        user_states[telegram_id] = {
+            "state": "learning",
+            "words": user_words,
+            "correct": 0,
+            "incorrect": 0,
+            "incorrect_pairs": [],
+        }
+
+        # Берём первое слово и запускаем обучение
+        current_word = user_words.pop()
+        user_states[telegram_id]["current_word"] = current_word
+
+        message = f"Как переводится слово '{current_word.english_word}'"
+        if current_word.transcription:
+            message += f" [{current_word.transcription}]"
+
+        keyboard = [
+            [InlineKeyboardButton("Закончить обучение", callback_data="finish_learning")],
+            [InlineKeyboardButton("Главное меню", callback_data="main_menu")],
+        ]
+        await query.edit_message_text(
+            message,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )

@@ -98,6 +98,7 @@ async def continue_learning(update, context):
         # Если слова закончились, вызываем finish_learning
         await finish_learning(update, context)
 
+
 async def finish_learning(update, context):
     telegram_id = update.callback_query.message.chat_id if update.callback_query else update.message.chat_id
     user_state = user_states.pop(telegram_id, None)
