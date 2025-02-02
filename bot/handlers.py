@@ -1,6 +1,6 @@
 from telegram import Update
 from telegram.ext import ContextTypes
-import logging
+
 from bot.learning import start_learning, continue_learning, finish_learning, generate_answer_options
 from bot.utils import get_main_menu, get_main_menu_button, get_user
 from bot.models import add_word_to_db, delete_word_from_db, get_user_words
@@ -11,12 +11,6 @@ from asgiref.sync import sync_to_async
 from dict.models import Word
 from random import shuffle
 
-# Настройка логирования
-logging.basicConfig(
-    level=logging.DEBUG,  # Уровень логирования: DEBUG, INFO, WARNING, ERROR, CRITICAL
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',  # Формат вывода
-)
-logger = logging.getLogger(__name__)  # Создаем логгер для текущего файла
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.message.chat_id
@@ -206,11 +200,11 @@ async def category_handler(update, context):
         current_word = user_words[0]
         user_states[telegram_id]["current_word"] = current_word
 
-        logger.debug(f"[category_handler] First word selected: {current_word.english_word}")
+
 
         # Генерируем варианты ответа
         random_answers = await generate_answer_options(current_word)
-        logger.debug(f"[category_handler] Generated answer options: {random_answers}")
+
 
         message = f"Как переводится слово '{current_word.english_word}'?"
         if current_word.transcription:

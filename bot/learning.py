@@ -4,16 +4,6 @@ from dict.models import Word
 from random import shuffle, sample
 from asgiref.sync import sync_to_async
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-# Состояния пользователей
-
-import logging
-
-# Настройка логирования
-logging.basicConfig(
-    level=logging.DEBUG,  # Уровень логирования: DEBUG, INFO, WARNING, ERROR, CRITICAL
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',  # Формат вывода
-)
-logger = logging.getLogger(__name__)  # Создаем логгер для текущего файла
 
 async def generate_answer_options(current_word):
     category = current_word.category
@@ -42,7 +32,6 @@ async def start_learning(update, context):
     user, _ = await get_user(telegram_id)
 
     words = await sync_to_async(list)(Word.objects.filter(user_id=user.id))
-    logger.debug(f"[start_learning] Fetched words for user {telegram_id}: {words}")
 
     if not words:
         await send_message(update, "Ваш словарь пуст. Добавьте слова для начала обучения.", get_main_menu_button())
@@ -59,10 +48,8 @@ async def start_learning(update, context):
 
     current_word = words.pop()
     user_states[telegram_id]["current_word"] = current_word
-    logger.debug(f"[start_learning] First word selected: {current_word.english_word}")
 
     random_answers = await generate_answer_options(current_word)
-    logger.debug(f"[start_learning] Generated answer options: {random_answers}")
 
     message = f"Как переводится слово '{current_word.english_word}'?"
     if current_word.transcription:
@@ -73,8 +60,6 @@ async def start_learning(update, context):
         [InlineKeyboardButton("Закончить обучение", callback_data="finish_learning")],
     ]
 
-    logger.debug(f"[start_learning] Sending message: {message}")
-    logger.debug(f"[start_learning] Keyboard structure: {keyboard}")
 
     try:
         await update.callback_query.message.edit_text(
@@ -82,7 +67,6 @@ async def start_learning(update, context):
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
     except Exception as e:
-        logger.error(f"[start_learning] Error while editing message: {e}")
         await send_message(update, message, InlineKeyboardMarkup(keyboard))
 
 
