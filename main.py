@@ -9,6 +9,7 @@ from telegram.ext import (
     filters,
 )
 
+# dep
 # Настройка Django для работы вне проекта
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "telegtam.settings")
 django.setup()
