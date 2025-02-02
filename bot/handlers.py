@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
-
-from bot.learning import start_learning, continue_learning, finish_learning
+import logging
+from bot.learning import start_learning, continue_learning, finish_learning, generate_answer_options
 from bot.utils import get_main_menu, get_main_menu_button, get_user
 from bot.models import add_word_to_db, delete_word_from_db, get_user_words
 from bot.state import user_states
@@ -11,6 +11,12 @@ from asgiref.sync import sync_to_async
 from dict.models import Word
 from random import shuffle
 
+# Настройка логирования
+logging.basicConfig(
+    level=logging.DEBUG,  # Уровень логирования: DEBUG, INFO, WARNING, ERROR, CRITICAL
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',  # Формат вывода
+)
+logger = logging.getLogger(__name__)  # Создаем логгер для текущего файла
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.message.chat_id
@@ -48,6 +54,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = update.callback_query
     await query.answer()
+
+    # Если нажата кнопка с ответом
+    if query.data.startswith("answer:"):
+        await continue_learning(update, context)
+        return
 
     if query.data == "main_menu":
         user_states.pop(query.message.chat_id, None)
@@ -170,44 +181,46 @@ async def category_handler(update, context):
     if callback_data.startswith("category:"):
         category = callback_data.split(":", 1)[1]
 
-        # Фильтруем слова по категории
         telegram_id = query.from_user.id
-
-        # Используем sync_to_async для выполнения запроса
         user_words = await sync_to_async(list)(
             Word.objects.filter(user__telegram_id=telegram_id)
         )
 
         if category != "все":
-            # Фильтрация по категории
             user_words = [word for word in user_words if word.category == category]
 
         if not user_words:
             await query.edit_message_text(f"В категории '{category}' пока нет слов.")
             return
 
-        # Перемешиваем слова и сохраняем их в состояние
         shuffle(user_words)
         user_states[telegram_id] = {
             "state": "learning",
-            "words": user_words,
+            "words": user_words,  # Список без изменений
             "correct": 0,
             "incorrect": 0,
             "incorrect_pairs": [],
         }
 
-        # Берём первое слово и запускаем обучение
-        current_word = user_words.pop()
+        # Берем первое слово, но НЕ удаляем его из списка
+        current_word = user_words[0]
         user_states[telegram_id]["current_word"] = current_word
 
-        message = f"Как переводится слово '{current_word.english_word}'"
+        logger.debug(f"[category_handler] First word selected: {current_word.english_word}")
+
+        # Генерируем варианты ответа
+        random_answers = await generate_answer_options(current_word)
+        logger.debug(f"[category_handler] Generated answer options: {random_answers}")
+
+        message = f"Как переводится слово '{current_word.english_word}'?"
         if current_word.transcription:
             message += f" [{current_word.transcription}]"
 
         keyboard = [
+            [InlineKeyboardButton(answer, callback_data=f"answer:{answer}") for answer in random_answers],
             [InlineKeyboardButton("Закончить обучение", callback_data="finish_learning")],
-            [InlineKeyboardButton("Главное меню", callback_data="main_menu")],
         ]
+
         await query.edit_message_text(
             message,
             reply_markup=InlineKeyboardMarkup(keyboard),

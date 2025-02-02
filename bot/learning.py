@@ -1,30 +1,54 @@
-import random
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from asgiref.sync import sync_to_async
-
 from bot.utils import get_main_menu_button, get_main_menu, get_user
 from bot.state import user_states
 from dict.models import Word
-
+from random import shuffle, sample
+from asgiref.sync import sync_to_async
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 # Состояния пользователей
+
+import logging
+
+# Настройка логирования
+logging.basicConfig(
+    level=logging.DEBUG,  # Уровень логирования: DEBUG, INFO, WARNING, ERROR, CRITICAL
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',  # Формат вывода
+)
+logger = logging.getLogger(__name__)  # Создаем логгер для текущего файла
+
+async def generate_answer_options(current_word):
+    category = current_word.category
+    all_words = await sync_to_async(list)(Word.objects.filter(category=category))
+    translations = [w.russian_word for w in all_words if w != current_word]
+
+    if len(translations) < 3:
+        translations += ["Заглушка"] * (3 - len(translations))
+
+    random_answers = sample(translations, min(3, len(translations)))
+    random_answers.append(current_word.russian_word)
+    shuffle(random_answers)
+
+    return random_answers
+
+
+async def send_message(update, text, reply_markup=None):
+    if update.message:
+        await update.message.reply_text(text, reply_markup=reply_markup)
+    elif update.callback_query:
+        await update.callback_query.message.reply_text(text, reply_markup=reply_markup)
 
 
 async def start_learning(update, context):
     telegram_id = update.callback_query.message.chat_id
-    print(f"[DEBUG] start_learning: Current user state before: {user_states.get(telegram_id)}")
-
-    # Остальная логика функции
     user, _ = await get_user(telegram_id)
+
     words = await sync_to_async(list)(Word.objects.filter(user_id=user.id))
+    logger.debug(f"[start_learning] Fetched words for user {telegram_id}: {words}")
 
     if not words:
-        await update.callback_query.message.reply_text(
-            "Ваш словарь пуст. Добавьте слова для начала обучения.",
-            reply_markup=get_main_menu_button()
-        )
+        await send_message(update, "Ваш словарь пуст. Добавьте слова для начала обучения.", get_main_menu_button())
         return
 
-    random.shuffle(words)
+    shuffle(words)
     user_states[telegram_id] = {
         "state": "learning",
         "words": words,
@@ -32,72 +56,76 @@ async def start_learning(update, context):
         "incorrect": 0,
         "incorrect_pairs": []
     }
-    print(f"[DEBUG] start_learning: Current user state after: {user_states.get(telegram_id)}")
 
     current_word = words.pop()
     user_states[telegram_id]["current_word"] = current_word
-    message = f"Как переводится слово '{current_word.english_word}'"
+    logger.debug(f"[start_learning] First word selected: {current_word.english_word}")
+
+    random_answers = await generate_answer_options(current_word)
+    logger.debug(f"[start_learning] Generated answer options: {random_answers}")
+
+    message = f"Как переводится слово '{current_word.english_word}'?"
     if current_word.transcription:
         message += f" [{current_word.transcription}]"
 
     keyboard = [
+        [InlineKeyboardButton(answer, callback_data=f"answer:{answer}") for answer in random_answers],
         [InlineKeyboardButton("Закончить обучение", callback_data="finish_learning")],
-        [InlineKeyboardButton("Главное меню", callback_data="main_menu")]
     ]
-    await update.callback_query.message.reply_text(
-        message,
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+
+    logger.debug(f"[start_learning] Sending message: {message}")
+    logger.debug(f"[start_learning] Keyboard structure: {keyboard}")
+
+    try:
+        await update.callback_query.message.edit_text(
+            text=message,
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    except Exception as e:
+        logger.error(f"[start_learning] Error while editing message: {e}")
+        await send_message(update, message, InlineKeyboardMarkup(keyboard))
 
 
 async def continue_learning(update, context):
-    telegram_id = update.message.chat_id
-    print(f"[DEBUG] continue_learning: Current user state: {user_states.get(telegram_id)}")
-
+    telegram_id = update.message.chat_id if update.message else update.callback_query.message.chat_id
     user_state = user_states.get(telegram_id)
+
     if not user_state or user_state.get("state") != "learning":
-        await update.message.reply_text(
-            "Вы не находитесь в режиме обучения.",
-            reply_markup=get_main_menu_button()
-        )
+        await send_message(update, "Вы не находитесь в режиме обучения.", get_main_menu_button())
         return
 
-    # Проверяем ответ пользователя
-    current_word = user_state["current_word"]
-    user_answer = update.message.text.strip().lower()
+    if update.callback_query and "answer:" in update.callback_query.data:
+        query = update.callback_query
+        selected_answer = query.data.split("answer:")[1]
 
-    if user_answer == current_word.russian_word.lower():
-        user_state["correct"] += 1
-        await update.message.reply_text("Верно! 🎉")
-    else:
-        user_state["incorrect"] += 1
-        user_state["incorrect_pairs"].append((current_word.english_word, current_word.russian_word))
-        await update.message.reply_text(
-            f"Неправильный перевод слова '{current_word.english_word}'. Правильный ответ: '{current_word.russian_word}'."
-        )
+        current_word = user_state["current_word"]
+        if selected_answer == current_word.russian_word:
+            user_state["correct"] += 1
+            await send_message(update, "Верно! 🎉")
+        else:
+            user_state["incorrect"] += 1
+            user_state["incorrect_pairs"].append((current_word.english_word, current_word.russian_word))
+            await send_message(update, f"Неправильно! '{current_word.english_word}' переводится как '{current_word.russian_word}'.")
 
-    # Проверяем, есть ли ещё слова
-    if user_state["words"]:
-        # Берём следующее слово
-        current_word = user_state["words"].pop()
-        user_state["current_word"] = current_word
-
-        message = f"Как переводится слово '{current_word.english_word}'"
-        if current_word.transcription:
-            message += f" [{current_word.transcription}]"
-
-        keyboard = [
-            [InlineKeyboardButton("Закончить обучение", callback_data="finish_learning")],
-            [InlineKeyboardButton("Главное меню", callback_data="main_menu")]
-        ]
-        await update.message.reply_text(
-            message,
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-    else:
-        # Если слова закончились, вызываем finish_learning
+    if not user_state["words"]:
         await finish_learning(update, context)
+        return
 
+    current_word = user_state["words"].pop()
+    user_state["current_word"] = current_word
+
+    random_answers = await generate_answer_options(current_word)
+
+    message = f"Как переводится слово '{current_word.english_word}'?"
+    if current_word.transcription:
+        message += f" [{current_word.transcription}]"
+
+    keyboard = [
+        [InlineKeyboardButton(answer, callback_data=f"answer:{answer}") for answer in random_answers],
+        [InlineKeyboardButton("Закончить обучение", callback_data="finish_learning")],
+    ]
+
+    await send_message(update, message, InlineKeyboardMarkup(keyboard))
 
 async def finish_learning(update, context):
     telegram_id = update.callback_query.message.chat_id if update.callback_query else update.message.chat_id

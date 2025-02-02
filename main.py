@@ -10,14 +10,26 @@ from telegram.ext import (
    filters,
 )
 
+
+
 # Настройка Django для работы вне проекта
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "telegtam.settings")
 django.setup()
 from bot.handlers import start_handler, button_handler, text_handler, learn_handler, category_handler
 
+
+import logging
+
 # Настройка логирования
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,  # Или DEBUG, чтобы видеть больше сообщений
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+)
 logger = logging.getLogger(__name__)
+
+# # Настройка логирования
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger(__name__)
 
 # Убедитесь, что вы добавляете обработчик для кнопки завершения обучения
 
