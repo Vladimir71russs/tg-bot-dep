@@ -1,15 +1,20 @@
 from telegram import Update
 from telegram.ext import ContextTypes
-
 from bot.learning import start_learning, continue_learning, finish_learning, generate_answer_options
 from bot.utils import get_main_menu, get_main_menu_button, get_user
 from bot.models import add_word_to_db, delete_word_from_db, get_user_words
 from bot.state import user_states
-
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from asgiref.sync import sync_to_async
 from dict.models import Word
 from random import shuffle
+
+
+MAX_MESSAGE_LENGTH = 4096  # Максимальная длина сообщения Telegram
+
+def split_message(text, max_length=MAX_MESSAGE_LENGTH):
+    """Разбивает сообщение на части, если оно слишком длинное."""
+    return [text[i:i+max_length] for i in range(0, len(text), max_length)]
 
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -82,10 +87,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 for w in words
             ])
             total_words = len(words)
-            await query.message.reply_text(
-                f"Ваш словарь:\n{word_list}\n\n📊 Всего слов в словаре: {total_words}",
-                reply_markup=get_main_menu()
-            )
+
+            # Разбиваем на части, если длина сообщения превышает MAX_MESSAGE_LENGTH
+            for part in split_message(f"Ваш словарь:\n{word_list}\n\n📊 Всего слов в словаре: {total_words}"):
+                await query.message.reply_text(part, reply_markup=get_main_menu())
+
         else:
             await query.message.reply_text("Ваш словарь пока пуст.")
 
