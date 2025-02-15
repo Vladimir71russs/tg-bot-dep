@@ -151,7 +151,7 @@ def get_category_menu():
         [InlineKeyboardButton("Прилагательные", callback_data="category:прилагательные")],
         [InlineKeyboardButton("Частицы", callback_data="category:частицы")],
         [InlineKeyboardButton("Словосочетания", callback_data="category:словосочетания")],
-        [InlineKeyboardButton("Новые слова", callback_data="category:новые")],
+        [InlineKeyboardButton("Новые слова", callback_data="category:новые слова")],
         [InlineKeyboardButton("Все слова", callback_data="category:все")],
     ]
     return InlineKeyboardMarkup(keyboard)
