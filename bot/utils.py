@@ -15,6 +15,7 @@ def get_main_menu():
         [InlineKeyboardButton("Показать словарь", callback_data="my_words")],
         [InlineKeyboardButton("Учимся", callback_data="learn_words")],
         [InlineKeyboardButton("Удалить слово", callback_data="delete_word")],
+        [InlineKeyboardButton("✏️ Изменить категорию", callback_data="edit_category")],
     ])
 
 async def get_user(telegram_id, username=None):
