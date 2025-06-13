@@ -110,6 +110,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         await finish_learning(update, context)
 
+    elif query.data == "edit_category":
+        user_states[query.message.chat_id] = {"state": "editing"}
+        await query.message.reply_text(
+            "Введите слово, для которого хотите изменить категорию (на английском или русском):"
+        )
+
+
 
     else:
         await query.message.reply_text("Неизвестная команда.")
@@ -134,6 +141,60 @@ async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if telegram_id in user_states and user_states[telegram_id].get("state") == "adding":
         await add_word_to_db(telegram_id, text, update)
         user_states.pop(telegram_id, None)  # Сбрасываем состояние
+        return
+
+
+
+    # Изменение категории
+    if telegram_id in user_states and user_states[telegram_id].get("state") == "editing":
+        user_states[telegram_id]["word_text"] = text
+        user_states[telegram_id]["state"] = "editing_category_choice"
+        category_text = (
+            "Введите новый номер категории:\n"
+            "1: существительные\n"
+            "2: глаголы\n"
+            "3: прилагательные\n"
+            "4: частицы\n"
+            "5: словосочетания\n"
+            "6: новые слова\n"
+        )
+        await update.message.reply_text(category_text)
+        return
+
+    # Получение новой категории
+    if telegram_id in user_states and user_states[telegram_id].get("state") == "editing_category_choice":
+        word_text = user_states[telegram_id].get("word_text")
+        new_category_index = text.strip()
+        category_map = {
+            "1": "существительные",
+            "2": "глаголы",
+            "3": "прилагательные",
+            "4": "частицы",
+            "5": "словосочетания",
+            "6": "новые слова",
+        }
+
+        if new_category_index not in category_map:
+            await update.message.reply_text("Неверный номер категории. Попробуйте снова.")
+            return
+
+        new_category = category_map[new_category_index]
+
+        # Обновляем категорию
+        word = await sync_to_async(Word.objects.filter)(
+            user__telegram_id=telegram_id
+        )
+        word = await sync_to_async(list)(word)
+        word = next((w for w in word if w.english_word.lower() == word_text.lower() or w.russian_word.lower() == word_text.lower()), None)
+
+        if not word:
+            await update.message.reply_text("Слово не найдено.")
+        else:
+            word.category = new_category
+            await sync_to_async(word.save)()
+            await update.message.reply_text(f"Категория слова '{word.english_word}' успешно изменена на '{new_category}' ✅",reply_markup=get_main_menu())
+
+        user_states.pop(telegram_id, None)
         return
 
     # Если пользователь вводит текст в неизвестном формате
