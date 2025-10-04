@@ -1,6 +1,7 @@
 from bot.state import user_states
 from bot.utils import get_main_menu
 from dict.models import Word, User
+from django.db.models.functions import Lower
 
 
 import re
@@ -112,9 +113,8 @@ async def delete_word_from_db(telegram_id, text, update):
 
 
 async def get_user_words(telegram_id):
-    # Находим пользователя по telegram_id
     user = await sync_to_async(User.objects.get)(telegram_id=telegram_id)
-    # Получаем список слов для пользователя
+    # Глобальная сортировка по english_word (case-insensitive)
     return await sync_to_async(list)(
-        Word.objects.filter(user=user).all()
+        Word.objects.filter(user=user).order_by(Lower('english_word')).all()
     )
