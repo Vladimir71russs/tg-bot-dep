@@ -81,34 +81,80 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "my_words":
         words = await get_user_words(query.message.chat_id)
+
+        # на случай, если по ошибке get_user_words вернёт (list,) — нормализуем (необязательно, но безопасно)
+        if isinstance(words, tuple) and len(words) == 1 and isinstance(words[0], list):
+            words = words[0]
+
         if words:
             word_list = "\n".join([
-                f"{w.category} - {w.english_word} - {w.russian_word}" + (f" - {w.transcription}" if w.transcription else "")
+                f"{w.english_word} - {w.russian_word}" + (
+                    f" - {w.transcription}" if w.transcription else "") + f" - {w.category}"
                 for w in words
             ])
             total_words = len(words)
 
-            # Разбиваем на части, если длина сообщения превышает MAX_MESSAGE_LENGTH
             for part in split_message(f"Ваш словарь:\n{word_list}\n\n📊 Всего слов в словаре: {total_words}"):
                 await query.message.reply_text(part, reply_markup=get_main_menu())
-
         else:
             await query.message.reply_text("Ваш словарь пока пуст.")
+
 
     elif query.data == "delete_word":
         user_states[query.message.chat_id] = {"state": "deleting"}
         await query.message.reply_text("Введите слово для удаления (на английском или русском):")
 
 
+
     elif query.data == "finish_learning":
+
+        # Подтверждение завершения обучения
+
+        keyboard = [
+
+            [
+
+                InlineKeyboardButton("✅ Закончить", callback_data="confirm_finish_learning"),
+
+                InlineKeyboardButton("🔁 Продолжить обучение", callback_data="continue_learning")
+
+            ]
+
+        ]
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await query.message.reply_text(
+
+            "Вы действительно хотите закончить обучение?",
+
+            reply_markup=reply_markup
+
+        )
+
+
+    elif query.data == "confirm_finish_learning":
 
         if not user_states.get(query.message.chat_id):
             await query.message.reply_text(
+
                 "Сессия обучения не найдена, попробуйте начать сначала.",
+
                 reply_markup=get_main_menu_button()
+
             )
+
             return
+
         await finish_learning(update, context)
+
+
+    elif query.data == "continue_learning":
+
+        await query.message.reply_text("Продолжаем обучение 💪")
+
+        await continue_learning(update, context)
+
 
     elif query.data == "edit_category":
         user_states[query.message.chat_id] = {"state": "editing"}
