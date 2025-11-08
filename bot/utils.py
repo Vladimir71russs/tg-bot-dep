@@ -14,9 +14,11 @@ def get_main_menu():
         [InlineKeyboardButton("Добавить слово", callback_data="add_word")],
         [InlineKeyboardButton("Показать словарь", callback_data="my_words")],
         [InlineKeyboardButton("Учимся", callback_data="learn_words")],
+        [InlineKeyboardButton("Учимся на русском", callback_data="learn_words_ru")],
         [InlineKeyboardButton("Удалить слово", callback_data="delete_word")],
         [InlineKeyboardButton("✏️ Изменить категорию", callback_data="edit_category")],
     ])
+
 
 async def get_user(telegram_id, username=None):
     return await sync_to_async(User.objects.get_or_create)(
